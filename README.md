@@ -50,3 +50,13 @@ grupo mover 200 190 {
     circulo 0 0 25 fundo=preto
 }
 ```
+
+## Como testar
+
+1. Abra a página com um servidor local (veja acima).
+2. Escolha um caso no menu **Carregar caso de teste…** ou escreva um programa na caixa de texto.
+3. Clique em **Analisar** (ou Ctrl + Enter).
+4. Programa certo: aparecem os tokens e a AST (em JSON ou em árvore).
+   Programa com erro: aparecem os tokens e a mensagem de erro léxico ou sintático, com a linha.
+
+Para conferir os 8 casos de uma vez pelo terminal: `node testes.mjs`.
