@@ -11,11 +11,6 @@ Linguagem de comandos para descrever desenhos. Esta fase produz a AST; o SVG fic
 | Vitor Utimura Locateli | 23024638 |
 | Lara Marina de Oliveira | 23024708 |
 
-## Especificação
-
-A especificação da linguagem (tokens, gramática, AST e decisões de projeto) está em
-[`Especificacao.pdf`](Especificacao.pdf) (também em `.docx`).
-
 ## Arquivos
 
 | Arquivo | Para que serve |
