@@ -2,7 +2,7 @@
 
 Linguagem de comandos para descrever desenhos. Esta fase produz a AST; o SVG fica para a Fase 2.
 
-**Testar online:** https://vitorlocateli.github.io/rabisco/
+**Testar online:** https://vitorlocateli.github.io/Analisador/
 
 ## Integrantes
 
