@@ -1,4 +1,4 @@
-// Analisador sintático descendente recursivo da linguagem Rabisco.
+// Analisador sintático descendente recursivo da linguagem.
 //
 // Gramática (símbolo inicial: programa)
 //

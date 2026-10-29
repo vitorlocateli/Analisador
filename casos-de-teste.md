@@ -1,4 +1,4 @@
-# Casos de teste — linguagem Rabisco
+# Casos de teste — linguagem 
 
 5 programas válidos e 3 inválidos, com o resultado esperado de cada um. Os mesmos casos estão em `casos.js`: a página de teste os carrega pelo menu **Carregar caso**, e `node testes.mjs` confere todos automaticamente.
 

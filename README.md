@@ -1,4 +1,4 @@
-# Rabisco — Fase 1 (léxico, sintático e AST)
+# Linguagem — Fase 1 (léxico, sintático e AST)
 
 Linguagem de comandos para descrever desenhos. Esta fase produz a AST; o SVG fica para a Fase 2.
 
@@ -14,7 +14,7 @@ Linguagem de comandos para descrever desenhos. Esta fase produz a AST; o SVG fic
 ## Especificação
 
 A especificação da linguagem (tokens, gramática, AST e decisões de projeto) está em
-[`Especificacao_Rabisco.pdf`](Especificacao_Rabisco.pdf) (também em `.docx`).
+[`Especificacao.pdf`](Especificacao.pdf) (também em `.docx`).
 
 ## Arquivos
 

@@ -1,4 +1,4 @@
-// Casos de teste da linguagem Rabisco: 5 programas válidos e 3 inválidos.
+// Casos de teste da linguagem: 5 programas válidos e 3 inválidos.
 // Cada caso traz o código e o resultado esperado:
 //   fase "ok"        → programa válido; "ast" é a AST esperada
 //   fase "lexica"    → lista de erros léxicos { linha, lexema }; o sintático não roda
