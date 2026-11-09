@@ -1,163 +1,136 @@
+// main.js · liga a página aos módulos (PRONTO: não precisa alterar)
+
 import { analisarLexico } from "./lexer.js";
 import { analisarSintatico } from "./parser.js";
-import { casos } from "./casos.js";
+import { verificar } from "./semantica.js";
+import { gerarSVG } from "./gerador.js";
+import { desenharSvg, baixarSvg } from "./svg.js";
 
-const entrada = document.getElementById("entrada");
-const areaTokens = document.getElementById("tokens");
-const areaStatus = document.getElementById("status");
-const areaSaida = document.getElementById("saida");
-const abas = document.getElementById("abas");
-const seletor = document.getElementById("casos");
+const ESTILO = {
+    erro: "rounded-md border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-800",
+    aviso: "rounded-md border-l-4 border-amber-500 bg-amber-50 px-3 py-2 text-sm text-amber-800",
+    ok: "rounded-md border-l-4 border-emerald-500 bg-emerald-50 px-3 py-2 text-sm text-emerald-800",
+};
 
-let astAtual = null;     // última AST gerada (para trocar de aba sem reanalisar)
-let abaAtual = "json";
+// Mostra uma lista de mensagens { nivel, etapa, texto } dentro de um elemento
+function mostrar(elemento, lista) {
+    elemento.innerHTML = "";
+    for (const m of lista) {
+        const p = document.createElement("p");
+        p.className = ESTILO[m.nivel];
+        p.textContent = m.etapa ? m.etapa + ": " + m.texto : m.texto;     // textContent: nunca interpreta o texto
+        elemento.appendChild(p);
+    }
+}
 
-// ---------- exemplo inicial e menu de casos de teste ----------
+// ---------------------- coluna da direita: SVG ----------------------
 
-entrada.value = casos[0].codigo;
+function desenhar() {
+    const texto = document.getElementById("saida").value;
+    const resultado = desenharSvg(texto, document.getElementById("figura"));
 
-casos.forEach(function (caso, indice) {
-    const opcao = document.createElement("option");
-    opcao.value = String(indice);
-    opcao.textContent = caso.nome;
-    seletor.appendChild(opcao);
-});
+    let nivel = "ok";
+    if (!resultado.ok) {
+        nivel = "erro";
+    } else if (resultado.aviso) {
+        nivel = "aviso";
+    }
+    mostrar(document.getElementById("msg-svg"), [{ nivel: nivel, etapa: "", texto: resultado.mensagem }]);
+}
 
-seletor.addEventListener("change", function () {
-    if (seletor.value === "") return;
-    entrada.value = casos[Number(seletor.value)].codigo;
-    seletor.value = "";
-    analisar();
-});
-
-// ---------- análise ----------
+// ---------------------- coluna da esquerda: Fases 1 e 2 ----------------------
 
 function analisar() {
-    const texto = entrada.value;
-    const { tokens, erros } = analisarLexico(texto);
+    const texto = document.getElementById("entrada").value;
+    const area = document.getElementById("mensagens");
+    const mensagens = [];
+    document.getElementById("tokens").textContent = "";
+    document.getElementById("ast").textContent = "";
 
-    mostrarTokens(tokens);
-    astAtual = null;
-    abas.hidden = true;
-    areaSaida.textContent = "";
-
-    if (erros.length > 0) {
-        // houve erro léxico: a análise sintática NÃO roda
-        const linhas = erros.map(function (erro) {
-            return "Erro léxico na linha " + erro.linha + ': "' + erro.lexema + '" não forma nenhum token';
-        });
-        mostrarStatus("erro", linhas.join("\n") + "\n\nA análise sintática não foi executada.");
-        return;
-    }
-
+    // 1) léxico
+    let resultado;
     try {
-        astAtual = analisarSintatico(tokens);
-        mostrarStatus("ok", "Programa válido: " + tokens.length + " tokens, AST gerada.");
-        abas.hidden = false;
-        mostrarAst();
+        resultado = analisarLexico(texto);
     } catch (falha) {
-        mostrarStatus("erro", falha.message);
-    }
-}
-
-function mostrarStatus(tipo, texto) {
-    areaStatus.className = "status " + tipo;
-    areaStatus.textContent = texto;
-}
-
-function mostrarTokens(tokens) {
-    if (tokens.length === 0) {
-        areaTokens.innerHTML = '<p class="vazio">Nenhum token.</p>';
+        mensagens.push({ nivel: "aviso", etapa: "Léxico", texto: falha.message });
+        mostrar(area, mensagens);
         return;
     }
-    const tabela = document.createElement("table");
-    tabela.innerHTML = "<thead><tr><th>Linha</th><th>Tipo</th><th>Lexema</th></tr></thead>";
-    const corpo = document.createElement("tbody");
-    for (const token of tokens) {
-        const tr = document.createElement("tr");
-        const celulas = [
-            [String(token.linha), "num"],
-            [token.tipo, "mono"],
-            [token.lexema, "mono"],
-        ];
-        for (const [texto, classe] of celulas) {
-            const td = document.createElement("td");
-            td.className = classe;
-            td.textContent = texto;      // textContent: nunca interpreta o lexema como HTML
-            tr.appendChild(td);
+
+    const linhasTokens = [];
+    for (const token of resultado.tokens) {
+        linhasTokens.push("linha " + token.linha + "  " + token.tipo.padEnd(14) + '"' + token.lexema + '"');
+    }
+    document.getElementById("tokens").textContent = linhasTokens.join("\n");
+
+    if (resultado.erros.length > 0) {                        // com erro léxico, o sintático não roda
+        for (const erro of resultado.erros) {
+            mensagens.push({ nivel: "erro", etapa: "Erro léxico", texto: 'linha ' + erro.linha + ': "' + erro.lexema + '" não forma nenhum token' });
         }
-        corpo.appendChild(tr);
+        mostrar(area, mensagens);
+        return;
     }
-    tabela.appendChild(corpo);
-    areaTokens.replaceChildren(tabela);
-}
 
-function mostrarAst() {
-    if (astAtual === null) return;
-    if (abaAtual === "json") {
-        areaSaida.textContent = JSON.stringify(astAtual, null, 2);
-    } else {
-        areaSaida.textContent = desenharArvore(astAtual);
+    // 2) sintático
+    let ast;
+    try {
+        ast = analisarSintatico(resultado.tokens);
+    } catch (falha) {
+        mensagens.push({ nivel: "erro", etapa: "", texto: falha.message });          // a mensagem do parser já diz "Erro sintático..."
+        mostrar(area, mensagens);
+        return;
     }
-}
-
-// ---------- visão em árvore (só para conferir o aninhamento) ----------
-
-function rotulo(no) {
-    if (no.tipo === "programa") return "programa";
-    if (no.tipo === "tela") return "tela " + no.largura + " x " + no.altura;
-    if (no.tipo === "reta") return "reta (" + no.x1 + ", " + no.y1 + ") → (" + no.x2 + ", " + no.y2 + ")" + textoEstilo(no.estilo);
-    if (no.tipo === "circulo") return "circulo centro (" + no.cx + ", " + no.cy + ") raio " + no.raio + textoEstilo(no.estilo);
-    if (no.tipo === "retangulo") return "retangulo (" + no.x + ", " + no.y + ") " + no.largura + " x " + no.altura + textoEstilo(no.estilo);
-    if (no.tipo === "grupo") {
-        const mods = no.modificadores.map(function (m) {
-            return m.tipo === "girar" ? "girar " + m.angulo : "mover " + m.dx + " " + m.dy;
-        });
-        return "grupo" + (mods.length > 0 ? "  [" + mods.join(" → ") + "]" : "");
+    if (ast === undefined) {
+        mensagens.push({ nivel: "aviso", etapa: "Sintático", texto: "parser.js ainda não devolve a AST: complete analisarSintatico()." });
+        mostrar(area, mensagens);
+        return;
     }
-    return no.tipo;
-}
+    document.getElementById("ast").textContent = JSON.stringify(ast, null, 2);
+    mensagens.push({ nivel: "ok", etapa: "Sintático", texto: "programa válido." });
 
-function textoEstilo(estilo) {
-    const partes = Object.keys(estilo).map(function (chave) {
-        return chave + "=" + estilo[chave];
-    });
-    return partes.length > 0 ? "  {" + partes.join(", ") + "}" : "";
-}
-
-function filhos(no) {
-    if (no.tipo === "programa") return [no.tela].concat(no.elementos);
-    if (no.tipo === "grupo") return no.elementos;
-    return [];
-}
-
-function desenharArvore(no, prefixo = "", ultimo = true, raiz = true) {
-    let texto = raiz ? rotulo(no) + "\n" : prefixo + (ultimo ? "└─ " : "├─ ") + rotulo(no) + "\n";
-    const proximoPrefixo = raiz ? "" : prefixo + (ultimo ? "   " : "│  ");
-    const lista = filhos(no);
-    lista.forEach(function (filho, indice) {
-        texto += desenharArvore(filho, proximoPrefixo, indice === lista.length - 1, false);
-    });
-    return texto;
-}
-
-// ---------- eventos ----------
-
-for (const botaoAba of abas.querySelectorAll(".aba")) {
-    botaoAba.addEventListener("click", function () {
-        abaAtual = botaoAba.dataset.aba;
-        for (const outro of abas.querySelectorAll(".aba")) {
-            outro.classList.toggle("ativa", outro === botaoAba);
+    // 3) semântico (Fase 2)
+    let errosSemanticos;
+    try {
+        errosSemanticos = verificar(ast);
+    } catch (falha) {
+        mensagens.push({ nivel: "erro", etapa: "Semântico", texto: falha.message });
+        mostrar(area, mensagens);
+        return;
+    }
+    if (errosSemanticos === undefined) {
+        mensagens.push({ nivel: "aviso", etapa: "Semântico", texto: "verificar() ainda não foi implementada (Fase 2)." });
+    } else if (errosSemanticos.length > 0) {
+        for (const erro of errosSemanticos) {
+            mensagens.push({ nivel: "erro", etapa: "Erro semântico", texto: "linha " + erro.linha + ": " + erro.mensagem });
         }
-        mostrarAst();
-    });
+        mostrar(area, mensagens);
+        return;
+    }
+
+    // 4) gerador de SVG (Fase 2)
+    let svg;
+    try {
+        svg = gerarSVG(ast);
+    } catch (falha) {
+        mensagens.push({ nivel: "erro", etapa: "Gerador", texto: falha.message });
+        mostrar(area, mensagens);
+        return;
+    }
+    if (svg === undefined) {
+        mensagens.push({ nivel: "aviso", etapa: "Gerador", texto: "gerarSVG() ainda não foi implementada (Fase 2)." });
+        mostrar(area, mensagens);
+        return;
+    }
+    document.getElementById("saida").value = svg;
+    mensagens.push({ nivel: "ok", etapa: "Gerador", texto: "SVG gerado." });
+    mostrar(area, mensagens);
+    desenhar();
 }
 
-document.getElementById("botao").addEventListener("click", analisar);
-
-entrada.addEventListener("keydown", function (evento) {
-    if (evento.key === "Enter" && (evento.ctrlKey || evento.metaKey)) {
-        evento.preventDefault();
-        analisar();
-    }
+document.getElementById("btn-analisar").addEventListener("click", analisar);
+document.getElementById("btn-desenhar").addEventListener("click", desenhar);
+document.getElementById("btn-baixar").addEventListener("click", function () {
+    baixarSvg(document.getElementById("saida").value);
 });
+
+desenhar();      // já mostra o SVG que vem na caixa da direita

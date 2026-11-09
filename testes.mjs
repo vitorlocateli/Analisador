@@ -2,6 +2,7 @@
 //   node testes.mjs
 import { analisarLexico } from "./lexer.js";
 import { analisarSintatico } from "./parser.js";
+import { verificar } from "./semantica.js";
 import { casos } from "./casos.js";
 
 function analisar(codigo) {
@@ -9,11 +10,17 @@ function analisar(codigo) {
     if (erros.length > 0) {
         return { fase: "lexica", erros: erros };            // sintático não roda
     }
+    let ast;
     try {
-        return { fase: "ok", ast: analisarSintatico(tokens) };
+        ast = analisarSintatico(tokens);
     } catch (e) {
         return { fase: "sintatica", linha: e.linha, esperado: e.esperado, encontrado: e.encontrado };
     }
+    const errosSemanticos = verificar(ast);
+    if (errosSemanticos.length > 0) {
+        return { fase: "semantica", erros: errosSemanticos };    // o gerador não roda
+    }
+    return { fase: "ok", ast: ast };
 }
 
 let falhas = 0;

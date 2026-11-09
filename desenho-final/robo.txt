@@ -1,0 +1,52 @@
+tela 400 400
+% robô dando tchau
+
+% céu e chão
+retangulo 0 0 400 400 fundo=#CDE8F6
+retangulo 0 330 400 70 fundo=#7BAE5B borda=#7BAE5B
+
+% sol no canto
+circulo 350 50 30 fundo=amarelo borda=laranja espessura=3
+
+% o robô inteiro: tudo aqui dentro usa coordenadas a partir do canto do robô
+grupo mover 140 60 {
+    % antena
+    reta 60 0 60 30 borda=preto espessura=3
+    circulo 60 0 8 fundo=vermelho
+
+    % cabeça, olhos e boca
+    retangulo 20 30 80 60 fundo=cinza borda=preto espessura=2
+    circulo 45 55 10 fundo=branco
+    circulo 75 55 10 fundo=branco
+    circulo 45 55 4 fundo=preto
+    circulo 75 55 4 fundo=preto
+    reta 40 75 80 75 borda=preto espessura=3
+
+    % pescoço e corpo
+    retangulo 50 90 20 10 fundo=cinza
+    retangulo 0 100 120 110 fundo=azul borda=preto espessura=2
+    circulo 60 135 12 fundo=amarelo
+    retangulo 35 165 50 20 fundo=branco
+
+    % pernas e pés
+    retangulo 20 210 25 60 fundo=cinza borda=preto
+    retangulo 75 210 25 60 fundo=cinza borda=preto
+    retangulo 10 270 40 15 fundo=preto
+    retangulo 70 270 40 15 fundo=preto
+
+    % braço esquerdo, abaixado
+    grupo mover 0 110 girar 30 {
+        retangulo 0 0 15 80 fundo=cinza borda=preto
+        circulo 7 85 10 fundo=preto
+    }
+
+    % braço direito, levantado dando tchau
+    grupo mover 120 110 girar 220 {
+        retangulo 0 0 15 70 fundo=cinza borda=preto
+        % a mão tem um grupo próprio, girado um pouco mais
+        grupo mover 7 75 girar 20 {
+            circulo 0 0 10 fundo=preto
+            reta 0 0 0 18 borda=preto espessura=3
+        }
+    }
+}

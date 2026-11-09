@@ -8,10 +8,8 @@
 //   forma         → RETA NUM NUM NUM NUM estilo
 //                 | CIRCULO NUM NUM NUM estilo
 //                 | RETANGULO NUM NUM NUM NUM estilo
-//   estilo        → borda fundo espessura
-//   borda         → BORDA IGUAL cor | ε
-//   fundo         → FUNDO IGUAL cor | ε
-//   espessura     → ESPESSURA IGUAL NUM | ε
+//   estilo        → atributo estilo | ε
+//   atributo      → BORDA IGUAL cor | FUNDO IGUAL cor | ESPESSURA IGUAL NUM
 //   cor           → COR | HEX
 //   grupo         → GRUPO modificadores ABRE elemento elementos FECHA
 //   modificadores → modificador modificadores | ε
@@ -21,6 +19,9 @@
 // vira um if que olha SÓ o próximo token. As listas (elementos e
 // modificadores) são feitas com while, que reconhece a mesma linguagem
 // da recursão à direita da gramática.
+//
+// Fase 2: os nós tela, reta, circulo, retangulo e grupo guardam também a
+// linha em que começam (campo linha), para a verificação semântica.
 
 const INICIO_ELEMENTO = ["RETA", "CIRCULO", "RETANGULO", "GRUPO"];
 
@@ -69,8 +70,7 @@ export function analisarSintatico(tokens) {
     function dicaPara(token) {
         if (token === undefined) return undefined;
         if (token.tipo === "BORDA" || token.tipo === "FUNDO" || token.tipo === "ESPESSURA") {
-            return "cada atributo de estilo aparece no máximo uma vez, logo após os números da forma, " +
-                "na ordem borda, fundo, espessura";
+            return "atributos de estilo só vêm logo depois dos números de uma forma (reta, circulo ou retangulo)";
         }
         if (token.tipo === "GIRAR" || token.tipo === "MOVER") {
             return "modificadores só existem em grupos, entre a palavra grupo e o {";
@@ -109,7 +109,7 @@ export function analisarSintatico(tokens) {
 
     // programa → TELA NUM NUM elementos
     function programa() {
-        esperar("TELA");
+        const linha = esperar("TELA").linha;
         const largura = numero();
         const altura = numero();
         const lista = elementos();
@@ -119,7 +119,7 @@ export function analisarSintatico(tokens) {
         }
         return {
             tipo: "programa",
-            tela: { tipo: "tela", largura: largura, altura: altura },
+            tela: { tipo: "tela", linha: linha, largura: largura, altura: altura },
             elementos: lista,
         };
     }
@@ -150,49 +150,49 @@ export function analisarSintatico(tokens) {
     //       | RETANGULO NUM NUM NUM NUM estilo
     function forma() {
         if (verifica("RETA")) {
-            esperar("RETA");
+            const linha = esperar("RETA").linha;
             const x1 = numero();
             const y1 = numero();
             const x2 = numero();
             const y2 = numero();
-            return { tipo: "reta", x1: x1, y1: y1, x2: x2, y2: y2, estilo: estilo() };
+            return { tipo: "reta", linha: linha, x1: x1, y1: y1, x2: x2, y2: y2, estilo: estilo() };
         } else if (verifica("CIRCULO")) {
-            esperar("CIRCULO");
+            const linha = esperar("CIRCULO").linha;
             const cx = numero();
             const cy = numero();
             const raio = numero();
-            return { tipo: "circulo", cx: cx, cy: cy, raio: raio, estilo: estilo() };
+            return { tipo: "circulo", linha: linha, cx: cx, cy: cy, raio: raio, estilo: estilo() };
         } else {
-            esperar("RETANGULO");
+            const linha = esperar("RETANGULO").linha;
             const x = numero();
             const y = numero();
             const largura = numero();
             const altura = numero();
-            return { tipo: "retangulo", x: x, y: y, largura: largura, altura: altura, estilo: estilo() };
+            return { tipo: "retangulo", linha: linha, x: x, y: y, largura: largura, altura: altura, estilo: estilo() };
         }
     }
 
-    // estilo    → borda fundo espessura
-    // borda     → BORDA IGUAL cor | ε
-    // fundo     → FUNDO IGUAL cor | ε
-    // espessura → ESPESSURA IGUAL NUM | ε
+    // estilo   → atributo estilo | ε
+    // atributo → BORDA IGUAL cor | FUNDO IGUAL cor | ESPESSURA IGUAL NUM
+    // Os atributos podem vir em qualquer ordem e repetir. Se repetir, a
+    // atribuição de novo no objeto troca o valor, então fica valendo o último.
     // Só entram na AST os atributos que foram escritos.
     function estilo() {
         const resultado = {};
-        if (verifica("BORDA")) {
-            esperar("BORDA");
-            esperar("IGUAL");
-            resultado.borda = cor();
-        }
-        if (verifica("FUNDO")) {
-            esperar("FUNDO");
-            esperar("IGUAL");
-            resultado.fundo = cor();
-        }
-        if (verifica("ESPESSURA")) {
-            esperar("ESPESSURA");
-            esperar("IGUAL");
-            resultado.espessura = numero();
+        while (verifica("BORDA") || verifica("FUNDO") || verifica("ESPESSURA")) {
+            if (verifica("BORDA")) {
+                esperar("BORDA");
+                esperar("IGUAL");
+                resultado.borda = cor();
+            } else if (verifica("FUNDO")) {
+                esperar("FUNDO");
+                esperar("IGUAL");
+                resultado.fundo = cor();
+            } else {
+                esperar("ESPESSURA");
+                esperar("IGUAL");
+                resultado.espessura = numero();
+            }
         }
         return resultado;
     }
@@ -210,7 +210,7 @@ export function analisarSintatico(tokens) {
     // grupo → GRUPO modificadores ABRE elemento elementos FECHA
     // ("elemento elementos" garante pelo menos um elemento: grupo vazio é erro)
     function grupo() {
-        esperar("GRUPO");
+        const linha = esperar("GRUPO").linha;
         const mods = modificadores();
         if (!verifica("ABRE")) {
             erro("GIRAR, MOVER ou ABRE");
@@ -225,7 +225,7 @@ export function analisarSintatico(tokens) {
             erro("RETA, CIRCULO, RETANGULO, GRUPO ou FECHA");
         }
         esperar("FECHA");
-        return { tipo: "grupo", modificadores: mods, elementos: lista };
+        return { tipo: "grupo", linha: linha, modificadores: mods, elementos: lista };
     }
 
     // modificadores → modificador modificadores | ε
